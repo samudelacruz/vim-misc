@@ -183,3 +183,6 @@ let g:syntastic_python_checker="pyflakes"
 let g:syntastic_mode_map = { 'mode': 'active',
                            \ 'active_filetypes': [],
                            \ 'passive_filetypes': ['cpp', 'go', 'puppet'] }
+" Jedi-vim
+let g:jedi#use_tabs_not_buffers = 0 "Use buffers instead of tabs
+let g:jedi#show_function_definition = 0 "Disable windows showing function definition
