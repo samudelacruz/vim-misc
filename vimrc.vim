@@ -1,3 +1,6 @@
+scriptencoding utf-8
+set encoding=utf-8
+
 "----------------------------------------------------------------------
 " Basic Options
 "----------------------------------------------------------------------
@@ -5,34 +8,32 @@ let mapleader=","         " The <leader> key
 set autoread              " Reload files that have not been modified
 set backspace=2           " Makes backspace not behave all retarded-like
 set colorcolumn=80        " Highlight 80 character limit
+set cursorline            " Highlight the line the cursor is on
 set hidden                " Allow buffers to be backgrounded without being saved
 set laststatus=2          " Always show the status bar
 set list                  " Show invisible characters
 set listchars=tab:›\ ,eol:¬,trail:⋅ "Set the characters for the invisibles
 set relativenumber        " Show relative line numbers
 set ruler                 " Show the line number and column in the status bar
-set encoding=utf-8
-set termencoding=utf-8
 set t_Co=256              " Use 256 colors
 set scrolloff=999         " Keep the cursor centered in the screen
-set showbreak=↪           " The character to put to show a line has been wrapped
 set showmatch             " Highlight matching braces
 set showmode              " Show the current mode on the open buffer
 set splitbelow            " Splits show up below by default
 set splitright            " Splits go to the right by default
 set title                 " Set the title for gvim
 set visualbell            " Use a visual bell to notify us
+
+if !has("win32")
+    set showbreak=↪           " The character to put to show a line has been wrapped
+end
+
 syntax on                 " Enable filetype detection by syntax
 
-" OS Detection
-if has('win32') || has('win64')
-    let $OS = 'windows'
-endif
-
 " Backup settings
-set directory=~/.vim/swap
-set backupdir=~/.vim/backup
-set undodir=~/.vim/undo
+execute "set directory=" . g:vim_home_path . "/swap"
+execute "set backupdir=" . g:vim_home_path . "/backup"
+execute "set undodir=" . g:vim_home_path . "/undo"
 set backup
 set undofile
 set writebackup
@@ -60,18 +61,20 @@ set wildignore+=*.swp         " Ignore vim backups
 
 " GUI settings
 if has("gui_running")
-    if $OS == 'windows'
-        colorscheme molokai
-        set guifont=Consolas\ for\ Powerline:h9
-        set guioptions=egmt
-        set fuopt+=maxhorz
+    " set bg=dark
+    colorscheme molokai
+    set guioptions=cegmt
+
+    if has("win32")
+        set guifont=Inconsolata:h11
     else
-        colorscheme molokai
         set guifont=Inconsolata\ for\ Powerline:h14
-        set guioptions=egmt
+    endif
+
+    if exists("&fuopt")
         set fuopt+=maxhorz
     endif
-endif
+end
 
 "----------------------------------------------------------------------
 " Key Mappings
@@ -120,6 +123,14 @@ cmap w!! %!sudo tee > /dev/null %
 " Expand in command mode to the path of the currently open file
 cnoremap %% <C-R>=expand('%:h').'/'<CR>
 
+" Buffer management
+nnoremap <leader>d   :bd<cr>
+
+" CtrlP
+nnoremap <leader>t :CtrlP<cr>
+nnoremap <leader>b :CtrlPBuffer<cr>
+nnoremap <leader>l :CtrlPLine<cr>
+
 "----------------------------------------------------------------------
 " Autocommands
 "----------------------------------------------------------------------
@@ -129,33 +140,6 @@ autocmd BufWritePre * :%s/\s\+$//e
 " Don't fold anything.
 autocmd BufWinEnter * set foldlevel=999999
 
-" Reload Powerline when we read a Puppet file. This works around
-" some weird bogus bug.
-autocmd BufNewFile,BufRead *.pp call Pl#Load()
-
-" Add the virtualenv's site-packages to vim path
-py << EOF
-import os.path
-import sys
-import vim
-if 'VIRTUAL_ENV' in os.environ:
-    project_base_dir = os.environ['VIRTUAL_ENV']
-    sys.path.insert(0, project_base_dir)
-    activate_this = os.path.join(project_base_dir, 'bin/activate_this.py')
-    execfile(activate_this, dict(__file__=activate_this))
-EOF
-
-" pytest module configuration
-
-
-" Execute the tests
-nmap <silent><Leader>tf <Esc>:Pytest file<CR>
-nmap <silent><Leader>tc <Esc>:Pytest class<CR>
-nmap <silent><Leader>tm <Esc>:Pytest method<CR>
-" cycle through test errors
-nmap <silent><Leader>tn <Esc>:Pytest next<CR>
-nmap <silent><Leader>tp <Esc>:Pytest previous<CR>
-nmap <silent><Leader>te <Esc>:Pytest error<CR>
 
 "----------------------------------------------------------------------
 " Plugin settings
@@ -172,17 +156,33 @@ if has("unix")
     \ }
 endif
 
+let g:ctrlp_buffer_func = { 'enter': 'MyCtrlPMappings' }
+
+func! MyCtrlPMappings()
+    nnoremap <buffer> <silent> <c-@> :call <sid>DeleteBuffer()<cr>
+endfunc
+
+func! s:DeleteBuffer()
+  let line = getline('.')
+  let bufid = line =~ '\[\d\+\*No Name\]$' ? str2nr(matchstr(line, '\d\+'))
+        \ : fnamemodify(line[2:], ':p')
+  exec "bd" bufid
+  exec "norm \<F5>"
+endfunc<D-j>
+
 " EasyMotion
 let g:EasyMotion_leader_key = '<leader><leader>'
 
-" Powerline
-let g:Powerline_symbols="fancy" " Fancy styling
+" JSON
+let g:vim_json_syntax_conceal = 0
+
+" Airline
+let g:airline_powerline_fonts = 1
+let g:airline_theme = "powerlineish"
+" Startify
 
 " Syntastic
 let g:syntastic_python_checker="pyflakes"
 let g:syntastic_mode_map = { 'mode': 'active',
                            \ 'active_filetypes': [],
                            \ 'passive_filetypes': ['cpp', 'go', 'puppet'] }
-" Jedi-vim
-let g:jedi#use_tabs_not_buffers = 0 "Use buffers instead of tabs
-let g:jedi#show_function_definition = 0 "Disable windows showing function definition
